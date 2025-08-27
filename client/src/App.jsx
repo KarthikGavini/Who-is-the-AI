@@ -9,6 +9,7 @@ function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/game/:roomId" element={<LobbyPage />} />
+        <Route path="/lobby/:roomId" element={<LobbyPage />} />
       </Routes>
     </Router>
   );

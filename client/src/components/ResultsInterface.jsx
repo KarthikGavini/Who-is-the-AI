@@ -1,74 +1,93 @@
 // src/components/ResultsInterface.jsx
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { socket } from '../socket';
 
-function ResultsInterface({ results, isHost, roomId, players }) {
+function ResultsInterface({ results, roomId }) {
   const navigate = useNavigate();
-  const [ready, setReady] = useState(false);
+  const location = useLocation();
+  const { nickname } = location.state || { nickname: 'Guest' };
+
+  useEffect(() => {
+    // Listen for the server's instruction to navigate to the new lobby
+    const handleNavigate = (newRoomId) => {
+      navigate(`/lobby/${newRoomId}`, { state: { nickname } });
+    };
+
+    socket.on('navigateToNewLobby', handleNavigate);
+
+    return () => {
+      socket.off('navigateToNewLobby', handleNavigate);
+    };
+  }, [navigate, nickname]);
+
+  // --- ADD THIS NEW useEffect FOR DEBUGGING ---
+  useEffect(() => {
+    const onConnect = () => console.log('[Socket Status] Connected!');
+    const onDisconnect = () => console.log('[Socket Status] Disconnected!');
+    const onConnectError = (err) => console.log('[Socket Status] Connection Error:', err.message);
+
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
+    socket.on('connect_error', onConnectError);
+
+    // Log the current status when the component loads
+    console.log(`[Socket Status] Results screen loaded. Socket is ${socket.connected ? 'connected' : 'disconnected'}.`);
+
+    return () => {
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
+      socket.off('connect_error', onConnectError);
+    };
+  }, []); // Empty array ensures this runs only once when the component mounts
 
   const handlePlayAgain = () => {
-    setReady(true);
-    socket.emit('playAgain', { roomId });
+    // Tell the server we want to play again
+    console.log(`"Play Again" clicked. Emitting 'findOrCreateLobby' for old room: ${roomId}`);
+    socket.emit('findOrCreateLobby', { oldRoomId: roomId });
   };
 
-  const handleReturnHome = () => {
-    // Note: It's good practice to disconnect when leaving the game entirely
-    socket.disconnect();
+  const handleExit = () => {
     navigate('/');
   };
 
   if (!results) {
     return <div className="flex items-center justify-center min-h-screen">Loading results...</div>;
   }
-  
-  const getNickname = (socketId) => {
-    const player = players.find(p => p.socketId === socketId);
-    return player ? player.nickname : 'Unknown Player';
-  };
+
+  const { aiPlayerName, votedOutName, playersWin, voteBreakdown } = results;
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
-      <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-lg text-center">
-        
-        {results.playersWin ? (
-          <h2 className="text-4xl font-bold text-green-500 mb-4">Humans Win! ✅</h2>
-        ) : (
-          <h2 className="text-4xl font-bold text-red-500 mb-4">The AI Wins! 🤖</h2>
-        )}
+    <div className="flex items-center justify-center min-h-screen bg-gray-900 text-white p-4">
+      <div className="bg-gray-800 p-8 rounded-xl shadow-2xl w-full max-w-lg text-center">
+        <h1 className={`text-5xl font-extrabold mb-4 ${playersWin ? 'text-green-400' : 'text-red-500'}`}>
+          {playersWin ? 'Humans Win!' : 'The AI Wins!'}
+        </h1>
 
-        <div className="text-lg text-gray-700 space-y-2 mb-6">
-          <p>The AI Impostor was: <strong className="font-bold">{results.aiPlayer?.nickname}</strong></p>
-          <p>The player voted out was: <strong className="font-bold">{results.votedOutPlayer?.nickname || 'No one'}</strong></p>
+        <div className="bg-gray-700 p-6 rounded-lg mb-6 text-xl space-y-2">
+          <p>The AI was <span className="font-bold text-blue-400">{aiPlayerName}</span>.</p>
+          <p>You voted out <span className="font-bold text-yellow-400">{votedOutName}</span>.</p>
         </div>
 
-        <div className="w-full bg-gray-50 p-4 rounded-md border mb-6">
-          <h3 className="text-xl font-semibold mb-3">Vote Tally</h3>
-          <ul className="space-y-1 text-left">
-            {Object.entries(results.voteCounts).map(([votedForId, count]) => (
-              <li key={votedForId}>
-                <strong>{getNickname(votedForId)}</strong> received {count} vote(s)
+        <div className="text-left mb-8">
+          <h2 className="text-2xl font-bold mb-3 border-b border-gray-600 pb-2">Vote Tally</h2>
+          <ul className="space-y-2">
+            {Object.entries(voteBreakdown).map(([votedFor, voters]) => (
+              <li key={votedFor}>
+                <span className="font-bold text-yellow-400">{votedFor}</span> was voted for by: <span className="text-gray-300">{voters.join(', ')}</span>
               </li>
             ))}
           </ul>
         </div>
-        
-        <div className="flex flex-col gap-3">
-          <button
-            onClick={handlePlayAgain}
-            disabled={ready}
-            className="w-full p-3 rounded-md text-white font-bold bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-          >
-            {ready ? "Waiting for other players..." : "Play Again"}
+
+        <div className="flex justify-center space-x-4">
+          <button onClick={handlePlayAgain} className="px-8 py-3 bg-green-600 font-bold rounded-lg text-xl hover:bg-green-700 transition-transform transform hover:scale-105">
+            Play Again
           </button>
-          <button
-            onClick={handleReturnHome}
-            className="w-full p-3 rounded-md text-gray-700 font-bold bg-gray-200 hover:bg-gray-300 transition-colors"
-          >
+          <button onClick={handleExit} className="px-8 py-3 bg-gray-600 font-bold rounded-lg text-xl hover:bg-gray-500 transition-transform transform hover:scale-105">
             Exit to Home
           </button>
         </div>
-
       </div>
     </div>
   );

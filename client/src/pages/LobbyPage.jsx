@@ -1,6 +1,6 @@
 // src/pages/LobbyPage.jsx
-import React, { useEffect, useState } from 'react';
-import { useParams, useLocation } from 'react-router-dom';
+import React, { useEffect, useState, useRef } from 'react';
+import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { socket } from '../socket';
 import GameInterface from '../components/GameInterface';
 import VotingInterface from '../components/VotingInterface';
@@ -9,11 +9,13 @@ import ResultsInterface from '../components/ResultsInterface';
 function LobbyPage() {
   const { roomId } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
+  const errorHandled = useRef(false);
   const { nickname } = location.state || { nickname: 'Guest' };
 
   const [room, setRoom] = useState(null);
   const [isHost, setIsHost] = useState(false);
-  const [isAI, setIsAI] = useState(false);
+  // const [isAI, setIsAI] = useState(false);
   // REMOVED: The separate 'results' state is no longer needed.
   const handleSettingsChange = (e) => {
       const { name, value } = e.target;
@@ -53,13 +55,14 @@ function LobbyPage() {
         return updatedRoom;
       });
 
-      if (socket.id === updatedRoom.hostId) setIsHost(true);
+      // if (socket.id === updatedRoom.hostId) setIsHost(true);
+      setIsHost(socket.id === updatedRoom.hostId);
     };
 
     const handleGameStarted = (roomData) => {
-      console.log('Game is starting!', roomData);
-      const uniquePlayers = Array.from(new Map(roomData.players.map(player => [player.socketId, player])).values());
-      roomData.players = uniquePlayers;
+      // console.log('Game is starting!', roomData);
+      // const uniquePlayers = Array.from(new Map(roomData.players.map(player => [player.socketId, player])).values());
+      // roomData.players = uniquePlayers;
 
       if (socket.id === roomData.aiPlayerSocketId) {
         setIsAI(true);
@@ -83,6 +86,15 @@ function LobbyPage() {
       }));
     };
 
+    const handleError = (errorMessage) => {
+      if (errorHandled.current) return;
+      errorHandled.current = true; // Set the flag to true
+
+      alert(`Could not join room: ${errorMessage}`);
+      navigate('/');  
+    };
+
+    socket.on('error', handleError);
 
     // --- Socket Connection and Event Listeners ---
     function joinRoomOnConnect() { socket.emit('joinRoom', { roomId, nickname }); }
@@ -104,8 +116,9 @@ function LobbyPage() {
       socket.off('gameStarted', handleGameStarted);
       socket.off('startVoting', handleStartVoting);
       socket.off('gameFinished', handleGameFinished);
+      socket.off('error', handleError);
     };
-  }, [roomId, nickname]);
+  }, [roomId, nickname, navigate]);
 
   // ... (handleStartGame function is unchanged)
   const handleStartGame = () => {
@@ -119,14 +132,14 @@ function LobbyPage() {
   // --- RENDER LOGIC IS NOW SAFER ---
   switch (room.gameState) {
     case 'playing':
-      return <GameInterface gameData={room} roomId={roomId} isAI={isAI} />;
+      return <GameInterface gameData={room} roomId={roomId} />;
     case 'voting':
-      return <VotingInterface gameData={room} roomId={roomId} isAI={isAI} />;
+      return <VotingInterface gameData={room} roomId={roomId} />;
     case 'finished':
       // Add a check to ensure results exist before rendering the component.
       // This prevents errors and shows a fallback loading message.
       return room.results
-        ? <ResultsInterface results={room.results} isHost={isHost} roomId={roomId} players={room.players} />
+        ? <ResultsInterface results={room.results} roomId={roomId} />
         : <div className="flex items-center justify-center min-h-screen">Loading results...</div>;
     case 'lobby':
     default:
@@ -187,7 +200,8 @@ function LobbyPage() {
             )}
 
             <div className="bg-gray-50 p-4 rounded-md border min-h-[200px]">
-              <h2 className="text-xl font-semibold mb-3 text-left">Players ({room.players.length})</h2>
+              {/* <h2 className="text-xl font-semibold mb-3 text-left">Players ({room.players.length})</h2> */}
+              <h2 className="text-xl font-semibold mb-3 text-left">Players ({room.players.length}/{room.maxPlayers})</h2>
               <ul className="space-y-2">
                 {room.players.map((player) => (
                   <li key={player.socketId} className="text-left p-3 bg-white rounded shadow-sm font-medium flex items-center">

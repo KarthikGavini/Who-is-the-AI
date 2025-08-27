@@ -1,50 +1,63 @@
 // src/components/VotingInterface.jsx
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { socket } from '../socket';
 
-// We receive gameData and roomId as props from LobbyPage
 function VotingInterface({ gameData, roomId }) {
-  const [votedForSocketId, setVotedForSocketId] = useState(null);
+  const [hasVoted, setHasVoted] = useState(false);
 
-  const handleVote = (targetSocketId) => {
-    // Prevent voting more than once
-    if (votedForSocketId) return;
+  // Create a map of all anonymous players for easy lookups
+  const anonymousPlayersMap = useMemo(() =>
+    new Map(Object.entries(gameData.anonymousPlayers || {})),
+    [gameData.anonymousPlayers]
+  );
 
-    // Set local state to give immediate feedback
-    setVotedForSocketId(targetSocketId);
+  // Create a list of all participants, but filter yourself out so you can't self-vote
+  const votablePlayers = useMemo(() =>
+    Array.from(anonymousPlayersMap.entries())
+      .map(([id, name]) => ({ id, name }))
+      .filter(p => p.id !== socket.id),
+    [anonymousPlayersMap]
+  );
 
-    // Emit the vote to the server
-    socket.emit('castVote', { roomId, votedForSocketId: targetSocketId });
+  const handleVote = (votedForId) => {
+    if (hasVoted) return; // Prevent voting more than once
+    setHasVoted(true);
+    socket.emit('castVote', {
+      roomId,
+      votedForSocketId: votedForId
+    });
   };
 
+  // After voting, show a waiting screen
+  if (hasVoted) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-800 text-white p-4">
+        <div className="bg-gray-700 p-8 rounded-xl shadow-lg text-center">
+          <h1 className="text-3xl font-bold mb-4">Vote Cast!</h1>
+          <p className="text-xl">Waiting for other players to vote...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mt-6"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // The main voting screen
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
-      <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md text-center">
-        {votedForSocketId ? (
-          <>
-            <h2 className="text-2xl font-bold mb-4 text-gray-800">Vote Cast!</h2>
-            <p className="text-lg text-gray-600">Waiting for other players to vote...</p>
-            <div className="mt-6 w-16 h-16 border-4 border-dashed rounded-full animate-spin border-blue-500 mx-auto"></div>
-          </>
-        ) : (
-          <>
-            <h2 className="text-3xl font-bold mb-2 text-gray-800">Time's Up!</h2>
-            <p className="text-lg text-gray-600 mb-8">Vote for who you think the AI Impostor is.</p>
-            <div className="w-full flex flex-col gap-3">
-              {gameData.players.map((player) => (
-                <button
-                  key={player.socketId}
-                  onClick={() => handleVote(player.socketId)}
-                  // You can't vote for yourself
-                  disabled={player.socketId === socket.id}
-                  className="w-full p-4 rounded-md text-white font-bold text-lg bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                >
-                  {player.nickname}
-                </button>
-              ))}
-            </div>
-          </>
-        )}
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-800 text-white p-4">
+      <div className="bg-gray-700 p-8 rounded-xl shadow-lg text-center w-full max-w-md">
+        <h1 className="text-3xl font-bold mb-2">Who is the AI?</h1>
+        <p className="text-gray-300 mb-6">Vote for the player you think is the imposter.</p>
+        <div className="grid grid-cols-1 gap-4">
+          {votablePlayers.map((player) => (
+            <button
+              key={player.id}
+              onClick={() => handleVote(player.id)}
+              className="w-full p-4 bg-blue-600 text-white font-bold rounded-lg text-xl hover:bg-blue-700 transition-transform transform hover:scale-105"
+            >
+              {player.name}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );
