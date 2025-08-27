@@ -1,0 +1,13 @@
+poc/client/node_modules
+poc/client/.env
+poc/server/node_modules
+poc/server/.env
+poc/history.py
+poc/venv
+
+client/node_modules
+client/.env
+
+backend/node_modules
+backend/.env
+
