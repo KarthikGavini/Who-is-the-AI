@@ -65,12 +65,17 @@ const roomSchema = new mongoose.Schema({
     },
     messages: [messageSchema],
 
-    gameDuration: {
-        type: Number,
-        default: 20, // Default to 120 seconds (2 minutes)
-    },
+    // gameDuration: {
+    //     type: Number,
+    //     default: 20, // Default to 120 seconds (2 minutes)
+    // },
     votes: [voteSchema],
-    
+    results: {
+        type: Object,
+        default: null,
+    },
+    maxPlayers: { type: Number, default: 5, min: 3, max: 5 },
+    gameDuration: { type: Number, default: 180 }, // Default to 180 seconds (3 minutes)
     // --- NEW FIELDS END HERE ---
 }, { timestamps: true });
 
