@@ -1,7 +1,8 @@
 // src/pages/LobbyPage.jsx
 import React, { useEffect, useState, useRef } from 'react';
-import { useParams, useLocation, useNavigate } from 'react-router-dom';
+import { useParams, useLocation, useNavigate, useBlocker } from 'react-router-dom';
 import { socket } from '../socket';
+// import { v4 as uuidv4 } from 'uuid';
 import GameInterface from '../components/GameInterface';
 import VotingInterface from '../components/VotingInterface';
 import ResultsInterface from '../components/ResultsInterface';
@@ -15,24 +16,31 @@ function LobbyPage() {
 
   const [room, setRoom] = useState(null);
   const [isHost, setIsHost] = useState(false);
-  // const [isAI, setIsAI] = useState(false);
-  // REMOVED: The separate 'results' state is no longer needed.
+  
   const handleSettingsChange = (e) => {
-      const { name, value } = e.target;
-      socket.emit('updateGameSettings', {
-        roomId,
-        [name]: parseInt(value, 10), // Use parseInt to send a number
-      });
+    const { name, value } = e.target;
+    socket.emit('updateGameSettings', {
+      roomId,
+      [name]: parseInt(value, 10), // Use parseInt to send a number
+    });
   };
 
-   // --- ADD THIS HELPER FUNCTION ---
-    const formatDuration = (seconds) => {
-      if (seconds < 60) return `${seconds} seconds`;
-      const minutes = seconds / 60;
-      return `${minutes} minute${minutes > 1 ? 's' : ''}`;
-    };
+  // --- ADD THIS HELPER FUNCTION ---
+  const formatDuration = (seconds) => {
+    if (seconds < 60) return `${seconds} seconds`;
+    const minutes = seconds / 60;
+    return `${minutes} minute${minutes > 1 ? 's' : ''}`;
+  };
 
   useEffect(() => {
+    const handleBeforeUnload = (event) => {
+      // This is the standard way to trigger the browser's confirmation dialog.
+      event.preventDefault();
+      // The browser will show its own default message.
+      event.returnValue = 'Are you sure you want to leave? Your game progress will be lost.';
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
     // --- THIS FUNCTION IS NOW FIXED ---
     const handleRoomUpdate = (updatedRoom) => {
       console.log('Received room update:', updatedRoom);
@@ -91,26 +99,27 @@ function LobbyPage() {
       errorHandled.current = true; // Set the flag to true
 
       alert(`Could not join room: ${errorMessage}`);
-      navigate('/');  
+      navigate('/');
     };
 
+    socket.on('roomUpdate', handleRoomUpdate);
+    socket.on('gameStarted', handleGameStarted);
+    socket.on('startVoting', handleStartVoting);
+    socket.on('gameFinished', handleGameFinished);
     socket.on('error', handleError);
 
-    // --- Socket Connection and Event Listeners ---
-    function joinRoomOnConnect() { socket.emit('joinRoom', { roomId, nickname }); }
-
+    // Simplified join logic
+    function joinRoomOnConnect() {
+      socket.emit('joinRoom', { roomId, nickname });
+    }
     if (socket.connected) {
       joinRoomOnConnect();
     } else {
       socket.on('connect', joinRoomOnConnect);
     }
 
-    socket.on('roomUpdate', handleRoomUpdate);
-    socket.on('gameStarted', handleGameStarted);
-    socket.on('startVoting', handleStartVoting);
-    socket.on('gameFinished', handleGameFinished);
-
     return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
       socket.off('connect', joinRoomOnConnect);
       socket.off('roomUpdate', handleRoomUpdate);
       socket.off('gameStarted', handleGameStarted);
@@ -123,6 +132,11 @@ function LobbyPage() {
   // ... (handleStartGame function is unchanged)
   const handleStartGame = () => {
     socket.emit('startGame', { roomId });
+  };
+
+  const handleQuitLobby = () => {
+    socket.emit('leaveRoom', { roomId }); // Tell the server we are leaving
+    navigate('/');
   };
 
   if (!room) {
@@ -143,6 +157,14 @@ function LobbyPage() {
         : <div className="flex items-center justify-center min-h-screen">Loading results...</div>;
     case 'lobby':
     default:
+      let lobbyStatusText = '';
+      if (room.players.length < 2) {
+        lobbyStatusText = 'Waiting for at least 2 players...';
+      } else if (room.players.length < room.maxPlayers) {
+        lobbyStatusText = 'Waiting for more players...';
+      } else {
+        lobbyStatusText = 'Room is full! Waiting for host to start.';
+      }
       return (
         // The lobby JSX is unchanged
         <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
@@ -150,6 +172,10 @@ function LobbyPage() {
             <h1 className="text-2xl font-bold text-gray-800 mb-2">Lobby</h1>
             <p className="text-gray-600 mb-4">
               Share Code: <strong className="text-blue-600 tracking-widest">{roomId}</strong>
+            </p>
+            {/* --- NEW: Dynamic Status Text --- */}
+            <p className="text-lg font-semibold text-gray-700 my-4 p-3 bg-gray-50 rounded-md">
+              {lobbyStatusText}
             </p>
 
             {/* --- ADD THIS NEW JSX BLOCK FOR HOST SETTINGS --- */}
@@ -220,6 +246,11 @@ function LobbyPage() {
                 Start Game ({room.players.length} players)
               </button>
             )}
+
+            {/* --- NEW: Quit Button --- */}
+            <button onClick={handleQuitLobby} className="w-full mt-2 p-3 rounded-md text-white font-bold bg-red-600 hover:bg-red-700 transition-colors">
+              Quit
+            </button>
           </div>
         </div>
       );

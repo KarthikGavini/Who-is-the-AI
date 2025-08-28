@@ -1,6 +1,7 @@
 // socket/socketHandler.js
 import Room from '../models/Room.js';
 import { gameContent } from '../gameContent.js';
+import { v4 as uuidv4 } from 'uuid';
 
 const newLobbyMap = new Map();
 
@@ -20,25 +21,29 @@ const tallyVotesAndEndGame = async (roomId, io) => {
             return;
         }
 
-        // Tally votes based on socket IDs
+        // Tally all votes (including the AI's)
         const voteCounts = room.votes.reduce((acc, vote) => {
             acc[vote.votedForSocketId] = (acc[vote.votedForSocketId] || 0) + 1;
             return acc;
         }, {});
 
         let votedOutSocketId = null;
+        let maxVotes = 0;
         if (room.votes.length > 0) {
             votedOutSocketId = Object.keys(voteCounts).reduce((a, b) => voteCounts[a] > voteCounts[b] ? a : b);
+            maxVotes = voteCounts[votedOutSocketId];
         }
 
-        const playersWin = votedOutSocketId === room.aiPlayerSocketId;
+        // --- NEW: Stricter Win Condition Logic ---
+        const humanVoterCount = room.players.length;
+        // Humans win ONLY if they vote out the AI with more than half of the human votes.
+        const playersWin = (votedOutSocketId === room.aiPlayerSocketId) && (maxVotes > humanVoterCount / 2);
+        // --- END OF NEW LOGIC ---
 
-        // --- NEW: Prepare results using anonymous names for the frontend ---
         const anonymousPlayersMap = new Map(room.anonymousPlayers);
         const aiPlayerName = anonymousPlayersMap.get(room.aiPlayerSocketId) || 'Unknown AI';
         const votedOutName = anonymousPlayersMap.get(votedOutSocketId) || 'No one';
 
-        // Create a breakdown of who voted for whom using anonymous names
         const voteBreakdown = {};
         for (const vote of room.votes) {
             const voterName = anonymousPlayersMap.get(vote.voterSocketId);
@@ -55,9 +60,8 @@ const tallyVotesAndEndGame = async (roomId, io) => {
             aiPlayerName,
             votedOutName,
             playersWin,
-            voteBreakdown, // e.g., { "Player 2": ["Player 1", "Player 3"] }
+            voteBreakdown,
         };
-        // --- END OF NEW LOGIC ---
 
         room.gameState = 'finished';
         await room.save();
@@ -70,53 +74,90 @@ const tallyVotesAndEndGame = async (roomId, io) => {
     }
 };
 
+const handlePlayerLeave = async (socket, roomId, io) => {
+    if (!roomId) return;
+    try {
+        const room = await Room.findOne({ roomId });
+        if (!room) return;
+
+        const playerIndex = room.players.findIndex(p => p.socketId === socket.id);
+        if (playerIndex === -1) return;
+
+        const removedPlayer = room.players.splice(playerIndex, 1)[0];
+        const wasHost = room.hostId === socket.id;
+        console.log(`Player ${removedPlayer.nickname} left room ${roomId}.`);
+
+        if (room.players.length === 0) {
+            await Room.deleteOne({ roomId });
+            console.log(`Room ${roomId} is empty and has been deleted.`);
+        } else {
+            if (wasHost && room.players.length > 0) {
+                room.hostId = room.players[0].socketId;
+            }
+            const updatedRoom = await room.save();
+            io.to(roomId).emit('roomUpdate', updatedRoom);
+        }
+        
+        // --- THE FIX IS HERE: Add this line back ---
+        socket.leave(roomId);
+        
+    } catch (err) {
+        console.error(`Error during player leave for room ${roomId}:`, err);
+    }
+};
+
 const registerSocketHandlers = (io, chloe_model) => {
     io.on('connection', (socket) => {
         console.log(`User connected: ${socket.id}`);
 
         socket.on('joinRoom', async ({ roomId, nickname }) => {
             try {
-                const room = await Room.findOne({ roomId });
-                if (!room) {
-                    return socket.emit('error', 'Room not found');
-                }
-
-                if (room.gameState !== 'lobby') {
-                    return socket.emit('error', 'This game has already started.');
-                }
-
-                if (room.players.length >= room.maxPlayers) {
-                    return socket.emit('error', 'This room is full.');
-                }
-
-                // --- MOVED ---
-                // Only join the socket to the room AFTER all checks have passed.
-                socket.join(roomId);
-                socket.data.roomId = roomId;
-
-                const initialPlayerCount = room.players.length;
+                // This single, atomic operation tries to add a new player ONLY if all conditions are met.
                 const updatedRoom = await Room.findOneAndUpdate(
-                    { roomId: roomId, 'players.socketId': { $ne: socket.id } },
-                    { $push: { players: { socketId: socket.id, nickname } } },
+                    {
+                        roomId: roomId,
+                        gameState: 'lobby', // Condition: Must be in lobby
+                        'players.socketId': { $ne: socket.id }, // Condition: Player's socket.id not already in the room
+                        $expr: { $lt: [{ $size: '$players' }, '$maxPlayers'] } // Condition: Room is not full
+                    },
+                    { $push: { players: { socketId: socket.id, nickname } } }, // Action: Add the player
                     { new: true }
                 );
 
                 if (updatedRoom) {
-                    console.log(`User ${socket.id} with nickname ${nickname} joined room ${roomId}`);
+                    // This block runs if the player was successfully added.
+                    socket.join(roomId);
+                    socket.data.roomId = roomId;
+
                     let finalRoom = updatedRoom;
-                    if (initialPlayerCount === 0) {
+                    // If this is the very first player, make them the host.
+                    if (finalRoom.players.length === 1) {
                         finalRoom.hostId = socket.id;
-                        await finalRoom.save();
+                        finalRoom = await finalRoom.save();
                     }
+
+                    console.log(`Player ${nickname} (${socket.id}) joined room ${roomId}`);
                     io.to(roomId).emit('roomUpdate', finalRoom);
                 } else {
-                    console.log(`Player ${socket.id} reconnected to room ${roomId}.`);
-                    const currentRoom = await Room.findOne({ roomId });
-                    socket.emit('roomUpdate', currentRoom);
+                    // If the update failed, it's because a condition wasn't met.
+                    // Check the room state again to send a specific error.
+                    const room = await Room.findOne({ roomId });
+                    if (!room) return socket.emit('error', 'Room not found');
+
+                    // This handles the second "join" request from developer mode; just send the room data.
+                    if (room.players.some(p => p.socketId === socket.id)) {
+                        console.log(`Player ${socket.id} already in room ${roomId}. Sending update.`);
+                        socket.join(roomId);
+                        socket.data.roomId = roomId;
+                        return io.to(socket.id).emit('roomUpdate', room);
+                    }
+                    if (room.gameState !== 'lobby') return socket.emit('error', 'This game has already started.');
+                    if (room.players.length >= room.maxPlayers) return socket.emit('error', 'This room is full.');
                 }
+
             } catch (err) {
-                console.error(err);
-                socket.emit('error', 'Server error');
+                console.error("Error during joinRoom:", err);
+                socket.emit('error', 'Server error during join');
             }
         });
 
@@ -200,19 +241,37 @@ const registerSocketHandlers = (io, chloe_model) => {
                         const roomToEnd = await Room.findOne({ roomId });
                         if (roomToEnd && roomToEnd.gameState === 'playing') {
                             roomToEnd.gameState = 'voting';
+
+                            // --- NEW: AI CASTS A VOTE ---
+                            // Get a list of all human players
+                            const humanPlayers = roomToEnd.players;
+                            if (humanPlayers.length > 0) {
+                                // Pick a random human player to vote for
+                                const randomTarget = humanPlayers[Math.floor(Math.random() * humanPlayers.length)];
+
+                                // Create the AI's vote and add it to the votes array
+                                const aiVote = {
+                                    voterSocketId: 'AI_PLAYER_ID',
+                                    votedForSocketId: randomTarget.socketId
+                                };
+                                roomToEnd.votes.push(aiVote);
+                                console.log(`AI in room ${roomId} voted for ${randomTarget.nickname}`);
+                            }
+                            // --- END OF NEW LOGIC ---
+
                             await roomToEnd.save();
                             io.to(roomId).emit('roomUpdate', roomToEnd);
                             console.log(`Voting has started in room ${roomId}.`);
 
+                            // Start the 30-second voting timer
                             setTimeout(() => {
                                 tallyVotesAndEndGame(roomId, io);
-                            }, 30 * 1000); // 30 seconds
+                            }, 30 * 1000);
                         }
                     } catch (err) {
                         console.error(`Error ending game in room ${roomId}:`, err);
                     }
                 }, room.gameDuration * 1000);
-
             } catch (err) {
                 console.error(err);
                 socket.emit('error', 'Failed to start game');
@@ -293,7 +352,7 @@ const registerSocketHandlers = (io, chloe_model) => {
                 console.log(`Vote cast in ${roomId}. Total votes: ${room.votes.length}, Human players: ${room.players.length}`);
 
                 // End the game when the number of votes equals the number of human players (since the AI doesn't vote)
-                if (room.votes.length === room.players.length) {
+                if (room.votes.length === room.players.length + 1) {
                     console.log("All human players have voted. Ending game now.");
                     tallyVotesAndEndGame(roomId, io);
                 }
@@ -332,40 +391,14 @@ const registerSocketHandlers = (io, chloe_model) => {
         });
 
 
-        // --- NEW "DISCONNECT" LOGIC ---
+        socket.on('leaveRoom', async ({ roomId }) => {
+            await handlePlayerLeave(socket, roomId, io);
+        });
+
         socket.on('disconnect', async () => {
             console.log(`User disconnected: ${socket.id}`);
-            // This line now works because we set socket.data.roomId when the user joined.
             const roomId = socket.data.roomId;
-            if (!roomId) return;
-
-            // ... (rest of your disconnect logic is fine) ...
-            try {
-                const room = await Room.findOne({ roomId });
-                if (!room) return;
-
-                const disconnectedPlayerIndex = room.players.findIndex(p => p.socketId === socket.id);
-                if (disconnectedPlayerIndex === -1) return;
-
-                const wasHost = room.hostId === socket.id;
-                room.players.splice(disconnectedPlayerIndex, 1);
-
-                if (wasHost && room.players.length > 0) {
-                    room.hostId = room.players[0].socketId;
-                    console.log(`Host disconnected. New host in room ${roomId} is ${room.players[0].nickname}`);
-                }
-
-                if (room.players.length === 0) {
-                    await Room.deleteOne({ roomId });
-                    console.log(`Room ${roomId} is empty and has been deleted.`);
-                } else {
-                    await room.save();
-                    io.to(roomId).emit('roomUpdate', room);
-                }
-
-            } catch (err) {
-                console.error(`Error handling disconnect for room ${roomId}:`, err);
-            }
+            await handlePlayerLeave(socket, roomId, io);
         });
     });
 };
