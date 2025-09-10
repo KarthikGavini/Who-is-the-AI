@@ -4,6 +4,7 @@ import { gameContent } from '../gameContent.js';
 import { v4 as uuidv4 } from 'uuid';
 
 const newLobbyMap = new Map();
+const aiResponseTimers = new Map();
 
 const shuffleArray = (array) => {
     for (let i = array.length - 1; i > 0; i--) {
@@ -97,10 +98,10 @@ const handlePlayerLeave = async (socket, roomId, io) => {
             const updatedRoom = await room.save();
             io.to(roomId).emit('roomUpdate', updatedRoom);
         }
-        
+
         // --- THE FIX IS HERE: Add this line back ---
         socket.leave(roomId);
-        
+
     } catch (err) {
         console.error(`Error during player leave for room ${roomId}:`, err);
     }
@@ -284,55 +285,115 @@ const registerSocketHandlers = (io, chloe_model) => {
                 const room = await Room.findOne({ roomId });
                 if (!room || room.gameState !== 'playing') return;
 
-                // --- NEW AI LOGIC ---
-
-                // 1. Identify the human sender's anonymous name.
+                // 1. Identify the sender's anonymous name.
                 const senderAnonymousName = room.anonymousPlayers.get(socket.id);
-                if (!senderAnonymousName) return; // Safety check
+                if (!senderAnonymousName) return;
 
-                // 2. Save and broadcast the human's message.
+                // 2. Save and broadcast the human's message WITH A TIMESTAMP.
                 const humanMessage = {
-                    nickname: senderAnonymousName, // NOTE: We now use the 'nickname' field for anonymous names
+                    nickname: senderAnonymousName,
                     text: messageText,
                     socketId: socket.id,
+                    timestamp: new Date(), // <-- Add timestamp here
                 };
                 room.messages.push(humanMessage);
+                await room.save(); // Save the message immediately
                 io.to(roomId).emit('newMessage', humanMessage);
 
-                // 3. Prepare and trigger the AI's response.
-                // Build the chat history for the AI using anonymous names for context.
-                const historyForAI = room.messages.map(msg => {
-                    const authorName = room.anonymousPlayers.get(msg.socketId) || 'Unknown Player';
-                    return {
-                        role: msg.socketId === 'AI_PLAYER_ID' ? "model" : "user",
-                        parts: [{ text: `${authorName}: ${msg.text}` }],
-                    };
-                });
+                // --- NEW TIMER LOGIC STARTS HERE ---
 
-                // Give the AI its context and prompt it to respond.
-                const aiPrompt = `You are playing a social deduction game. Your anonymous name is ${room.anonymousPlayers.get('AI_PLAYER_ID')}. The game's theme is "${room.currentTheme}" and the current question is "${room.currentQuestion}". It is your turn to respond in the chat. Keep your response brief and natural, like a text message.`;
+                // 3. Clear any existing timer for this room. This prevents the AI from responding if humans are chatting quickly.
+                if (aiResponseTimers.has(roomId)) {
+                    clearTimeout(aiResponseTimers.get(roomId));
+                }
 
-                const chat = chloe_model.startChat({ history: historyForAI });
-                const result = await chat.sendMessage(aiPrompt);
-                const aiResponseText = result.response.text();
+                // 4. Set a new timer. The AI will only "think" after a pause in conversation.
+                const thinkingTimer = setTimeout(async () => {
+                    try {
+                        // We need to fetch the room again to get the most up-to-date message list
+                        const currentRoom = await Room.findOne({ roomId });
+                        if (!currentRoom || currentRoom.gameState !== 'playing') return;
 
-                const aiAnonymousName = room.anonymousPlayers.get('AI_PLAYER_ID');
-                const aiMessage = {
-                    nickname: aiAnonymousName,
-                    text: aiResponseText,
-                    socketId: 'AI_PLAYER_ID',
-                };
-                room.messages.push(aiMessage);
+                        const now = new Date();
+                        const historyForAI = currentRoom.messages.map(msg => {
+                            const authorName = currentRoom.anonymousPlayers.get(msg.socketId) || 'Unknown Player';
+                            const timeAgo = Math.round((now - new Date(msg.timestamp)) / 1000); // Time in seconds
+                            return {
+                                role: msg.socketId === 'AI_PLAYER_ID' ? "model" : "user",
+                                parts: [{ text: `[${authorName} - ${timeAgo}s ago]: ${msg.text}` }], // <-- Add formatted timestamp
+                            };
+                        });
 
-                // 4. Broadcast the AI's message after a short, natural delay.
-                setTimeout(() => {
-                    io.to(roomId).emit('newMessage', aiMessage);
-                }, 1500); // 1.5-second delay
+                        // in socketHandler.js, inside the thinkingTimer setTimeout
 
-                await room.save();
+                        const aiPrompt = `
+                            You are ${currentRoom.anonymousPlayers.get('AI_PLAYER_ID')}. The theme is "${currentRoom.currentTheme}".
+                            Analyze the recent chat history with timestamps. First, decide if you should respond. Second, if you do respond, choose the most human-like and strategic message style from your guide.
+                            Provide your decision in JSON format ONLY.
+
+                            Example (Speak, Short):
+                            {
+                            "shouldRespond": true,
+                            "reasoning": "Player 1 made a joke. A short, natural laugh is the best response to build rapport.",
+                            "responseStyle": "short",
+                            "response": "lol good one"
+                            }
+
+                            Example (Speak, Accusation):
+                            {
+                            "shouldRespond": true,
+                            "reasoning": "This is a good moment to cast suspicion on Player 3. Their last two messages were contradictory. I will use the full accusation format.",
+                            "responseStyle": "accusation",
+                            "response": "Okay, I'm confused about Player 3. First they said they liked the theme, but now they're saying it's boring. Doesn't that seem like a bot trying to agree with everyone? What do you all think?"
+                            }
+
+                            Example (Silent):
+                            {
+                            "shouldRespond": false,
+                            "reasoning": "The conversation is flowing fine without me. I will stay silent to avoid seeming too eager.",
+                            "responseStyle": null,
+                            "response": null
+                            }
+
+                            Your decision now:
+                            `;
+
+                        const chat = chloe_model.startChat({ history: historyForAI });
+                        const result = await chat.sendMessage(aiPrompt);
+                        const aiResponseText = result.response.text();
+
+                        const cleanedJsonString = aiResponseText.replace(/```json|```/g, '').trim();
+                        const aiDecision = JSON.parse(cleanedJsonString);
+
+                        if (aiDecision.shouldRespond && aiDecision.response) {
+                            console.log(`AI chose to respond. Reason: ${aiDecision.reasoning}`);
+                            const aiAnonymousName = currentRoom.anonymousPlayers.get('AI_PLAYER_ID');
+                            const aiMessage = {
+                                nickname: aiAnonymousName,
+                                text: aiDecision.response,
+                                socketId: 'AI_PLAYER_ID',
+                                timestamp: new Date(),
+                            };
+                            currentRoom.messages.push(aiMessage);
+                            await currentRoom.save();
+
+                            setTimeout(() => {
+                                io.to(roomId).emit('newMessage', aiMessage);
+                            }, 1500);
+                        } else {
+                            console.log(`AI chose to stay silent. Reason: ${aiDecision.reasoning}`);
+                        }
+                    } catch (err) {
+                        console.error("Error inside AI thinking timer:", err);
+                    } finally {
+                        aiResponseTimers.delete(roomId); // Clean up the map once the timer is done
+                    }
+                }, Math.random() * 8000 + 3000); // Random delay between 7 to 12 seconds
+
+                aiResponseTimers.set(roomId, thinkingTimer);
 
             } catch (err) {
-                console.error("Chat Error:", err);
+                console.error("Error in sendMessage handler:", err);
             }
         });
 

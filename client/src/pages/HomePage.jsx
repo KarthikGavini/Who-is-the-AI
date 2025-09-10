@@ -13,7 +13,9 @@ function HomePage() {
     try {
       const response = await axios.post('http://localhost:5002/api/rooms/create');
       const { roomId } = response.data;
-      navigate(`/game/${roomId}`, { state: { nickname } });
+      
+      // navigate(`/game/${roomId}`, { state: { nickname } });
+      navigate(`/game/${roomId}`, { state: { nickname, hasJoined: true } });
     } catch (error) {
       console.error('Error creating game:', error);
       alert('Could not create game. Please try again.');
@@ -24,7 +26,8 @@ function HomePage() {
   const handleJoinGame = () => {
     if (!nickname.trim() || !roomCode.trim()) return;
     // Navigate to the lobby with the provided code and nickname
-    navigate(`/game/${roomCode}`, { state: { nickname } });
+    // navigate(`/game/${roomCode}`, { state: { nickname } });
+    navigate(`/game/${roomCode}`, { state: { nickname, hasJoined: true } });
   };
 
   return (

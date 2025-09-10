@@ -12,7 +12,8 @@ function LobbyPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const errorHandled = useRef(false);
-  const { nickname } = location.state || { nickname: 'Guest' };
+  // const { nickname } = location.state || { nickname: 'Guest' };
+  const { nickname, hasJoined } = location.state || { nickname: 'Guest', hasJoined: false };
 
   const [room, setRoom] = useState(null);
   const [isHost, setIsHost] = useState(false);
@@ -33,6 +34,14 @@ function LobbyPage() {
   };
 
   useEffect(() => {
+    // --- NEW, SIMPLER RELOAD LOGIC ---
+    if (!hasJoined) {
+      // If the user didn't come via the navigate function (i.e., they reloaded)
+      alert("You were disconnected for reloading the page.");
+      navigate('/');
+      return; // Stop further execution.
+    }
+    
     const handleBeforeUnload = (event) => {
       // This is the standard way to trigger the browser's confirmation dialog.
       event.preventDefault();
@@ -127,7 +136,7 @@ function LobbyPage() {
       socket.off('gameFinished', handleGameFinished);
       socket.off('error', handleError);
     };
-  }, [roomId, nickname, navigate]);
+  }, [roomId, nickname, navigate, hasJoined]);
 
   // ... (handleStartGame function is unchanged)
   const handleStartGame = () => {

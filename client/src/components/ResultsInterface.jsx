@@ -11,7 +11,7 @@ function ResultsInterface({ results, roomId }) {
   useEffect(() => {
     // Listen for the server's instruction to navigate to the new lobby
     const handleNavigate = (newRoomId) => {
-      navigate(`/lobby/${newRoomId}`, { state: { nickname } });
+      navigate(`/lobby/${newRoomId}`, { state: { nickname, hasJoined: true } });
     };
 
     socket.on('navigateToNewLobby', handleNavigate);
