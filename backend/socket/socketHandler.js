@@ -195,6 +195,30 @@ const registerSocketHandlers = (io, chloe_model) => {
             }
         });
 
+        // --- NEW EVENT HANDLER STARTS HERE ---
+
+        socket.on('updateLobbyType', async ({ roomId, isPublic }) => {
+            try {
+                const room = await Room.findOne({ roomId });
+                // Security Check: Only the host can change the lobby type.
+                if (!room || socket.id !== room.hostId) {
+                    console.log(`Non-host user ${socket.id} tried to change lobby type.`);
+                    return;
+                }
+
+                // Update the setting
+                room.isPublic = isPublic;
+                await room.save();
+
+                // Broadcast the update to all players in the room
+                io.to(roomId).emit('roomUpdate', room);
+                console.log(`Host ${socket.id} changed lobby type for room ${roomId} to ${isPublic ? 'Public' : 'Private'}`);
+
+            } catch (err) {
+                console.error(`Error updating lobby type for room ${roomId}:`, err);
+            }
+        });
+
         socket.on('startGame', async ({ roomId }) => {
             try {
                 const room = await Room.findOne({ roomId });
@@ -224,6 +248,8 @@ const registerSocketHandlers = (io, chloe_model) => {
                 room.messages = [];
                 room.votes = [];
                 room.aiPlayerSocketId = 'AI_PLAYER_ID'; // Store the AI's constant ID
+
+                room.gameStartTime = new Date().toISOString();
 
                 // Set the theme and question
                 const themeIndex = Math.floor(Math.random() * gameContent.length);
