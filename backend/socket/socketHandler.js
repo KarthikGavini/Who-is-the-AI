@@ -15,7 +15,6 @@ const shuffleArray = (array) => {
     return array;
 };
 
-// --- NEW: Reusable function to tally votes and end the game ---
 const tallyVotesAndEndGame = async (roomId, io) => {
     try {
         const room = await Room.findOne({ roomId });
@@ -223,7 +222,6 @@ const registerSocketHandlers = (io, chloe_model) => {
             }
         });
 
-        // --- NEW EVENT HANDLER STARTS HERE ---
 
         socket.on('updateLobbyType', async ({ roomId, isPublic }) => {
             try {

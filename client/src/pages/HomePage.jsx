@@ -1,100 +1,3 @@
-// // src/pages/HomePage.jsx
-// import React, { useState } from 'react';
-// import { useNavigate } from 'react-router-dom';
-// import axios from 'axios';
-
-// function HomePage() {
-//   const [nickname, setNickname] = useState('');
-//   const [roomCode, setRoomCode] = useState('');
-//   const navigate = useNavigate();
-
-//   const handleCreateGame = async () => {
-//     if (!nickname.trim()) return;
-//     try {
-//       const response = await axios.post('http://localhost:5002/api/rooms/create');
-//       const { roomId } = response.data;
-
-//       // navigate(`/game/${roomId}`, { state: { nickname } });
-//       navigate(`/game/${roomId}`, { state: { nickname, hasJoined: true } });
-//     } catch (error) {
-//       console.error('Error creating game:', error);
-//       alert('Could not create game. Please try again.');
-//     }
-//   };
-
-//   // --- THIS FUNCTION IS NOW UPDATED ---
-//   const handleJoinGame = () => {
-//     if (!nickname.trim() || !roomCode.trim()) return;
-//     // Navigate to the lobby with the provided code and nickname
-//     // navigate(`/game/${roomCode}`, { state: { nickname } });
-//     navigate(`/game/${roomCode}`, { state: { nickname, hasJoined: true } });
-//   };
-
-//   return (
-//     // ... the rest of the JSX remains the same
-//     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
-//       <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-sm">
-//         <h1 className="text-3xl font-bold text-center text-gray-800 mb-6">
-//           AI Impostor
-//         </h1>
-
-//         <div className="w-full mb-4">
-//           <label htmlFor="nickname" className="block text-left font-semibold text-gray-700 mb-2">
-//             Enter Your Nickname
-//           </label>
-//           <input
-//             id="nickname"
-//             type="text"
-//             placeholder="e.g., Player1"
-//             value={nickname}
-//             onChange={(e) => setNickname(e.target.value)}
-//             className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
-//           />
-//         </div>
-
-//         <div className="w-full flex flex-col gap-3">
-//           <button
-//             onClick={handleCreateGame}
-//             disabled={!nickname.trim()}
-//             className="w-full p-3 rounded-md text-white font-bold bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-//           >
-//             Create Game
-//           </button>
-
-//           <div className="flex items-center w-full my-2">
-//             <hr className="flex-grow border-t border-gray-300" />
-//             <span className="px-2 text-gray-500">OR</span>
-//             <hr className="flex-grow border-t border-gray-300" />
-//           </div>
-
-//           <div className="w-full">
-//             <label htmlFor="roomCode" className="block text-left font-semibold text-gray-700 mb-2">
-//               Enter Game Code
-//             </label>
-//             <input
-//               id="roomCode"
-//               type="text"
-//               placeholder="e.g., A4B1"
-//               value={roomCode}
-//               onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-//               className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
-//             />
-//           </div>
-//           <button
-//             onClick={handleJoinGame}
-//             disabled={!nickname.trim() || !roomCode.trim()}
-//             className="w-full p-3 rounded-md text-white font-bold bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-//           >
-//             Join Game
-//           </button>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
-
-// export default HomePage;
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -157,7 +60,6 @@ const AiMascot = () => {
     const [visibleTip, setVisibleTip] = useState('');
 
     useEffect(() => {
-        // ... (random behavior logic remains the same)
         let mounted = true;
 
         const behaviors = [
@@ -239,9 +141,7 @@ function HomePage() {
         try {
             const response = await axios.post('http://localhost:5002/api/rooms/create');
             const { roomId } = response.data;
-            // sessionStorage.setItem('pendingJoin', roomId);
             console.log('Room ID:', roomId);
-            // sessionStorage.setItem('pendingJoin', roomId);
             navigate(`/game/${roomId}`, { state: { nickname, hasJoined: true } });
         } catch (error) {
             console.error('Error creating game:', error);
@@ -252,45 +152,29 @@ function HomePage() {
     const handleJoinGameWithCode = (e) => {
         e.preventDefault();
         if (!nickname.trim() || !roomCode.trim()) return;
-        // sessionStorage.setItem('pendingJoin', roomId);
-        // sessionStorage.setItem('pendingJoin', roomId);
         navigate(`/game/${roomCode}`, { state: { nickname, hasJoined: true } });
     };
 
-    // const handleJoinPublicGame = (e) => {
-    //     e.preventDefault();
-    //     if (!nickname.trim()) return;
-    //     alert('Public lobbies are coming soon! Stay tuned.');
-    //     setActiveModal(null);
-    // };
-
-    // --- FUNCTION UPDATED ---
     const handleJoinPublicGame = async (e) => {
         e.preventDefault();
         if (!nickname.trim()) return;
 
-        setIsLoading(true); // Start loading
+        setIsLoading(true); 
         try {
-            // Call the new backend endpoint
             const response = await axios.post('http://localhost:5002/api/rooms/find-public');
             const { roomId, created } = response.data;
 
             if (created) {
                 toast.success('No public lobbies found. A new one was created!');
             }
-
-            // Navigate to the found room
-            // sessionStorage.setItem('pendingJoin', roomId);
-            // sessionStorage.setItem('pendingJoin', roomId);
             navigate(`/game/${roomId}`, { state: { nickname, hasJoined: true } });
 
         } catch (error) {
             console.error('Error finding public game:', error);
-            // alert('Could not find a public game. Please try again.');
             toast.error('Could not find a public game. Please try again.');
         } finally {
-            setIsLoading(false); // Stop loading
-            setActiveModal(null); // Close modal on completion
+            setIsLoading(false); 
+            setActiveModal(null); 
         }
     };
 
@@ -314,15 +198,13 @@ function HomePage() {
                         </div>
                         <div>
                             <label htmlFor="roomCode" className="block text-left font-semibold text-gray-300 mb-2">Enter Game Code</label>
-                            {/* <input id="roomCode" type="text" placeholder="e.g., A4B1" value={roomCode} onChange={(e) => setRoomCode(e.target.value.toUpperCase())} className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-green-500 transition-shadow" required /> */}
                             <input
                                 id="roomCode"
                                 type="text"
                                 placeholder="e.g., A4B1"
                                 value={roomCode}
-                                // This line now handles all the validation logic
                                 onChange={(e) => setRoomCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
-                                maxLength="4" // Added max length
+                                maxLength="4" 
                                 className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-green-500 transition-shadow"
                                 required
                             />
@@ -331,13 +213,6 @@ function HomePage() {
                     </form>
                 );
             case 'join-public':
-                //  return (
-                //     <form onSubmit={handleJoinPublicGame}>
-                //         <label htmlFor="nickname-public" className="block text-left font-semibold text-gray-300 mb-2">Enter Your Nickname</label>
-                //         <input id="nickname-public" type="text" placeholder="e.g., Maverick" value={nickname} onChange={(e) => setNickname(e.target.value)} className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow" required />
-                //         <button type="submit" className="w-full mt-6 p-3 rounded-md text-white font-bold bg-purple-600 hover:bg-purple-700 disabled:bg-gray-500 disabled:cursor-not-allowed transition-colors">Find Public Game</button>
-                //     </form>
-                // );
                 return (
                     <form onSubmit={handleJoinPublicGame}>
                         <label htmlFor="nickname-public" className="block text-left font-semibold text-gray-300 mb-2">Enter Your Nickname</label>
@@ -345,10 +220,8 @@ function HomePage() {
                         <button
                             type="submit"
                             className="w-full mt-6 p-3 rounded-md text-white font-bold bg-purple-600 hover:bg-purple-700 disabled:bg-gray-500 disabled:cursor-not-allowed transition-colors"
-                            // Disable button while loading
                             disabled={isLoading}
                         >
-                            {/* Show loading text */}
                             {isLoading ? 'Finding Game...' : 'Find Public Game'}
                         </button>
                     </form>
@@ -449,5 +322,3 @@ function HomePage() {
 }
 
 export default HomePage;
-
-
