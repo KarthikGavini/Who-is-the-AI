@@ -1,5 +1,6 @@
 // socket/socketHandler.js
 import Room from '../models/Room.js';
+import GameLog from '../models/GameLog.js';
 import { gameContent } from '../gameContent.js';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -55,6 +56,33 @@ const tallyVotesAndEndGame = async (roomId, io) => {
                 }
                 voteBreakdown[votedForName].push(voterName);
             }
+        }
+
+        // --- NEW DATA LOGGING LOGIC STARTS HERE ---
+        try {
+            const gameLog = new GameLog({
+                gameId: room.roomId,
+                theme: room.currentTheme,
+                question: room.currentQuestion,
+                participants: Array.from(anonymousPlayersMap.values()),
+                aiPlayerName: anonymousPlayersMap.get(room.aiPlayerSocketId) || 'Unknown AI',
+                chatLog: room.messages.map(msg => ({
+                    sender: anonymousPlayersMap.get(msg.socketId) || 'Unknown Player',
+                    text: msg.text,
+                    timestamp: msg.timestamp,
+                })),
+                votes: room.votes.map(vote => ({
+                    voter: anonymousPlayersMap.get(vote.voterSocketId) || 'Unknown Voter',
+                    votedFor: anonymousPlayersMap.get(vote.votedForSocketId) || 'Unknown Votee',
+                })),
+                votedOutName: anonymousPlayersMap.get(votedOutSocketId) || 'No one',
+                ai_won: !playersWin,
+            });
+
+            await gameLog.save();
+            console.log(`[Data Logging] Game data for room ${roomId} saved successfully.`);
+        } catch (logError) {
+            console.error(`[Data Logging] FAILED to save game log for room ${roomId}:`, logError);
         }
 
         room.results = {

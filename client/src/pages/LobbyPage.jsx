@@ -375,6 +375,9 @@ function LobbyPage() {
     const [room, setRoom] = useState(null);
     const [isHost, setIsHost] = useState(false);
     const [copied, setCopied] = useState(false);
+    // const hasValidatedEntry = useRef(false);
+    // const [isValidEntry, setIsValidEntry] = useState(false);
+    // const hasValidated = useRef(false);
     
     const handleSettingsChange = (e) => {
         const { name, value } = e.target;
@@ -401,12 +404,7 @@ function LobbyPage() {
     };
 
     useEffect(() => {
-        if (!hasJoined) {
-            alert("You were disconnected for reloading the page.");
-            navigate('/');
-            return;
-        }
-        
+
         const handleBeforeUnload = (event) => {
             event.preventDefault();
             event.returnValue = 'Are you sure you want to leave? Your game progress will be lost.';

@@ -138,10 +138,12 @@ function ResultsInterface({ results, roomId }) {
 
   const handlePlayAgain = () => {
     console.log(`"Play Again" clicked. Emitting 'findOrCreateLobby' for old room: ${roomId}`);
+    sessionStorage.removeItem('hasJoinedRoom');
     socket.emit('findOrCreateLobby', { oldRoomId: roomId });
   };
 
   const handleExit = () => {
+    sessionStorage.removeItem('hasJoinedRoom');
     navigate('/');
   };
 

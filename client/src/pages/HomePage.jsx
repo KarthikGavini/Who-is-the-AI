@@ -13,7 +13,7 @@
 //     try {
 //       const response = await axios.post('http://localhost:5002/api/rooms/create');
 //       const { roomId } = response.data;
-      
+
 //       // navigate(`/game/${roomId}`, { state: { nickname } });
 //       navigate(`/game/${roomId}`, { state: { nickname, hasJoined: true } });
 //     } catch (error) {
@@ -60,7 +60,7 @@
 //           >
 //             Create Game
 //           </button>
-          
+
 //           <div className="flex items-center w-full my-2">
 //             <hr className="flex-grow border-t border-gray-300" />
 //             <span className="px-2 text-gray-500">OR</span>
@@ -119,7 +119,7 @@ const Modal = ({ isOpen, onClose, title, children }) => {
                     <div className="flex justify-between items-center mb-6">
                         <h3 className="text-2xl font-bold text-white">{title}</h3>
                         <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
                         </button>
                     </div>
                     {children}
@@ -196,7 +196,7 @@ const AiMascot = () => {
                     </div>
                     <div className="absolute bottom-1 w-8 text-center text-white/95 text-xs font-semibold">\_(ツ)_/</div>
                 </motion.div>
-                
+
                 {visibleTip && (
                     <motion.div
                         initial={{ opacity: 0, y: 6 }}
@@ -239,6 +239,9 @@ function HomePage() {
         try {
             const response = await axios.post('http://localhost:5002/api/rooms/create');
             const { roomId } = response.data;
+            // sessionStorage.setItem('pendingJoin', roomId);
+            console.log('Room ID:', roomId);
+            // sessionStorage.setItem('pendingJoin', roomId);
             navigate(`/game/${roomId}`, { state: { nickname, hasJoined: true } });
         } catch (error) {
             console.error('Error creating game:', error);
@@ -249,6 +252,8 @@ function HomePage() {
     const handleJoinGameWithCode = (e) => {
         e.preventDefault();
         if (!nickname.trim() || !roomCode.trim()) return;
+        // sessionStorage.setItem('pendingJoin', roomId);
+        // sessionStorage.setItem('pendingJoin', roomId);
         navigate(`/game/${roomCode}`, { state: { nickname, hasJoined: true } });
     };
 
@@ -263,7 +268,7 @@ function HomePage() {
     const handleJoinPublicGame = async (e) => {
         e.preventDefault();
         if (!nickname.trim()) return;
-        
+
         setIsLoading(true); // Start loading
         try {
             // Call the new backend endpoint
@@ -273,8 +278,10 @@ function HomePage() {
             if (created) {
                 toast.success('No public lobbies found. A new one was created!');
             }
-            
+
             // Navigate to the found room
+            // sessionStorage.setItem('pendingJoin', roomId);
+            // sessionStorage.setItem('pendingJoin', roomId);
             navigate(`/game/${roomId}`, { state: { nickname, hasJoined: true } });
 
         } catch (error) {
@@ -294,7 +301,7 @@ function HomePage() {
                 return (
                     <form onSubmit={handleCreateGame}>
                         <label htmlFor="nickname-create" className="block text-left font-semibold text-gray-300 mb-2">Enter Your Nickname</label>
-                        <input id="nickname-create" type="text" placeholder="e.g., Captain" value={nickname} onChange={(e) => setNickname(e.target.value)} className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" required />
+                        <input id="nickname-create" type="text" placeholder="e.g., Captain" value={nickname} onChange={(e) => setNickname(e.target.value)} maxLength="15" className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" required />
                         <button type="submit" className="w-full mt-6 p-3 rounded-md text-white font-bold bg-blue-600 hover:bg-blue-700 disabled:bg-gray-500 disabled:cursor-not-allowed transition-colors">Create Private Game</button>
                     </form>
                 );
@@ -303,11 +310,22 @@ function HomePage() {
                     <form onSubmit={handleJoinGameWithCode} className="space-y-4">
                         <div>
                             <label htmlFor="nickname-join" className="block text-left font-semibold text-gray-300 mb-2">Enter Your Nickname</label>
-                            <input id="nickname-join" type="text" placeholder="e.g., Detective" value={nickname} onChange={(e) => setNickname(e.target.value)} className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-green-500 transition-shadow" required />
+                            <input id="nickname-join" type="text" placeholder="e.g., Detective" value={nickname} onChange={(e) => setNickname(e.target.value)} maxLength="15" className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-green-500 transition-shadow" required />
                         </div>
                         <div>
                             <label htmlFor="roomCode" className="block text-left font-semibold text-gray-300 mb-2">Enter Game Code</label>
-                            <input id="roomCode" type="text" placeholder="e.g., A4B1" value={roomCode} onChange={(e) => setRoomCode(e.target.value.toUpperCase())} className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-green-500 transition-shadow" required />
+                            {/* <input id="roomCode" type="text" placeholder="e.g., A4B1" value={roomCode} onChange={(e) => setRoomCode(e.target.value.toUpperCase())} className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-green-500 transition-shadow" required /> */}
+                            <input
+                                id="roomCode"
+                                type="text"
+                                placeholder="e.g., A4B1"
+                                value={roomCode}
+                                // This line now handles all the validation logic
+                                onChange={(e) => setRoomCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+                                maxLength="4" // Added max length
+                                className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-green-500 transition-shadow"
+                                required
+                            />
                         </div>
                         <button type="submit" className="w-full pt-4 p-3 rounded-md text-white font-bold bg-green-600 hover:bg-green-700 disabled:bg-gray-500 disabled:cursor-not-allowed transition-colors">Join with Code</button>
                     </form>
@@ -320,15 +338,15 @@ function HomePage() {
                 //         <button type="submit" className="w-full mt-6 p-3 rounded-md text-white font-bold bg-purple-600 hover:bg-purple-700 disabled:bg-gray-500 disabled:cursor-not-allowed transition-colors">Find Public Game</button>
                 //     </form>
                 // );
-                 return (
+                return (
                     <form onSubmit={handleJoinPublicGame}>
                         <label htmlFor="nickname-public" className="block text-left font-semibold text-gray-300 mb-2">Enter Your Nickname</label>
-                        <input id="nickname-public" type="text" placeholder="e.g., Maverick" value={nickname} onChange={(e) => setNickname(e.target.value)} className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow" required />
-                        <button 
-                            type="submit" 
+                        <input id="nickname-public" type="text" placeholder="e.g., Maverick" value={nickname} onChange={(e) => setNickname(e.target.value)} maxLength="15" className="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow" required />
+                        <button
+                            type="submit"
                             className="w-full mt-6 p-3 rounded-md text-white font-bold bg-purple-600 hover:bg-purple-700 disabled:bg-gray-500 disabled:cursor-not-allowed transition-colors"
                             // Disable button while loading
-                            disabled={isLoading} 
+                            disabled={isLoading}
                         >
                             {/* Show loading text */}
                             {isLoading ? 'Finding Game...' : 'Find Public Game'}
@@ -339,7 +357,7 @@ function HomePage() {
                 return null;
         }
     };
-    
+
     const openModal = (modalType) => {
         setNickname('');
         setRoomCode('');
@@ -349,7 +367,7 @@ function HomePage() {
     return (
         <div className="bg-gradient-to-b from-[#05040a] to-[#0c1636] text-gray-200 min-h-screen font-sans overflow-x-hidden">
             <AiMascot />
-            
+
             <header className="py-4 px-4 md:px-6 absolute top-0 left-0 w-full">
                 <div className="container mx-auto flex justify-between items-center">
                     <div>
@@ -366,24 +384,34 @@ function HomePage() {
                     <p className="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto">A social deduction game where you chat, investigate, and vote to find the secret AI hiding in your group.</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto mb-32">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto mb-16">
                     <div onClick={() => openModal('create')} className="bg-gray-800 p-10 rounded-xl shadow-lg border border-gray-700 hover:border-blue-500 hover:scale-105 transform transition-all duration-300 cursor-pointer">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mx-auto mb-4 text-blue-500"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mx-auto mb-4 text-blue-500"><path d="M5 12h14" /><path d="M12 5v14" /></svg>
                         <h3 className="text-2xl font-bold mb-2 text-white">Create Game</h3>
                         <p className="text-gray-400">Start a new private lobby and invite your friends.</p>
                     </div>
                     <div onClick={() => openModal('join-code')} className="bg-gray-800 p-10 rounded-xl shadow-lg border border-gray-700 hover:border-green-500 hover:scale-105 transform transition-all duration-300 cursor-pointer">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mx-auto mb-4 text-green-500"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.72"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.72"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mx-auto mb-4 text-green-500"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.72" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.72" /></svg>
                         <h3 className="text-2xl font-bold mb-2 text-white">Join with Code</h3>
                         <p className="text-gray-400">Enter a lobby code to join a friend's private game.</p>
                     </div>
                     <div onClick={() => openModal('join-public')} className="bg-gray-800 p-10 rounded-xl shadow-lg border border-gray-700 hover:border-purple-500 hover:scale-105 transform transition-all duration-300 cursor-pointer">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mx-auto mb-4 text-purple-500"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mx-auto mb-4 text-purple-500"><circle cx="12" cy="12" r="10" /><path d="M2 12h20" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></svg>
                         <h3 className="text-2xl font-bold mb-2 text-white">Join Public Game</h3>
                         <p className="text-gray-400">Jump into a game with other players right now.</p>
                     </div>
+
                 </div>
-                
+
+                {/* --- NEW LOCATION FOR YOUR TEXT --- */}
+                <div className="max-w-3xl italic mx-auto mb-16">
+                    <p className="text-base text-blue-400">
+                        Our AI learns from every match played by the community. Face an ever-evolving challenge.
+                    </p>
+                </div>
+
+
+
                 <div className="max-w-6xl mx-auto">
                     <div className="p-8 rounded-2xl border border-blue-500/30 bg-blue-900/10 mb-16">
                         <h3 className="text-3xl font-bold text-white mb-8">How to Play</h3>
@@ -397,13 +425,13 @@ function HomePage() {
                     </div>
 
                     <div className="p-8 rounded-2xl border border-purple-500/30 bg-purple-900/10">
-                         <h3 className="text-3xl font-bold text-white mb-8">The Rules</h3>
-                         <div className="grid md:grid-cols-4 gap-6 text-left">
+                        <h3 className="text-3xl font-bold text-white mb-8">The Rules</h3>
+                        <div className="grid md:grid-cols-4 gap-6 text-left">
                             <InfoCard title="English Only" icon={<span className="text-gray-400">🗣️</span>}>All communication must be in English.</InfoCard>
                             <InfoCard title="Stay On Topic" icon={<span className="text-gray-400">🎯</span>}>Conversation must relate to the theme.</InfoCard>
                             <InfoCard title="No Meta-Gaming" icon={<span className="text-gray-400">🚫</span>}>Don't ask questions to "break" the AI.</InfoCard>
                             <InfoCard title="Be Respectful" icon={<span className="text-gray-400">🤝</span>}>No personal attacks. Keep it fun.</InfoCard>
-                         </div>
+                        </div>
                     </div>
                 </div>
 
@@ -411,8 +439,8 @@ function HomePage() {
 
             <Modal isOpen={!!activeModal} onClose={() => setActiveModal(null)} title={
                 activeModal === 'create' ? 'Create a New Game' :
-                activeModal === 'join-code' ? 'Join with a Code' :
-                'Join a Public Game'
+                    activeModal === 'join-code' ? 'Join with a Code' :
+                        'Join a Public Game'
             }>
                 {renderModalContent()}
             </Modal>
