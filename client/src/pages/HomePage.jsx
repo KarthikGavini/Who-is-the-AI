@@ -131,21 +131,23 @@ function HomePage() {
     const [roomCode, setRoomCode] = useState('');
     const [activeModal, setActiveModal] = useState(null);
     const navigate = useNavigate();
-    // --- NEW: Add loading state ---
     const [isLoading, setIsLoading] = useState(false);
 
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5002';
 
     const handleCreateGame = async (e) => {
         e.preventDefault();
         if (!nickname.trim()) return;
         try {
-            const response = await axios.post('http://localhost:5002/api/rooms/create');
+            // const response = await axios.post('http://localhost:5002/api/rooms/create');
+            const response = await axios.post(`${API_URL}/api/rooms/create`);
             const { roomId } = response.data;
             console.log('Room ID:', roomId);
             navigate(`/game/${roomId}`, { state: { nickname, hasJoined: true } });
         } catch (error) {
             console.error('Error creating game:', error);
-            alert('Could not create game. Please try again.');
+            // alert('Could not create game. Please try again.');
+            toast.error('Could not create game. Please try again.');
         }
     };
 
@@ -161,7 +163,8 @@ function HomePage() {
 
         setIsLoading(true); 
         try {
-            const response = await axios.post('http://localhost:5002/api/rooms/find-public');
+            // const response = await axios.post('http://localhost:5002/api/rooms/find-public');
+            const response = await axios.post(`${API_URL}/api/rooms/find-public`);
             const { roomId, created } = response.data;
 
             if (created) {
