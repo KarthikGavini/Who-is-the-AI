@@ -4,10 +4,15 @@ poc/server/node_modules
 poc/server/.env
 poc/history.py
 poc/venv
+poc/.DS_Store
 
 client/node_modules
 client/.env
+client/.DS_Store
 
 backend/node_modules
 backend/.env
+backend/.DS_Store
 
+# macOS
+.DS_Store
