@@ -42,7 +42,7 @@ A real-time, multiplayer social deduction game where players must use their wits
 ## 📁 Project Structure & POC
 
 The repository is structured as a monorepo with three main directories:
-* `/frontend`: Contains the complete React application built with Vite.
+* `/client`: Contains the complete React application built with Vite.
 * `/backend`: Contains the Node.js, Express, and Socket.IO server.
 * `/poc`: The **Proof of Concept** folder. This contains the initial Python scripts and experiments used to test and refine the core AI logic and `SYSTEM_PROMPT` with the Gemini API before it was integrated into the full application.
 
@@ -88,7 +88,7 @@ Instructions to set up and run the project locally...
 
 3.  **Setup Frontend:**
     ```bash
-    cd ../frontend
+    cd ../client
     npm install
     ```
     Create a `.env` file in the `frontend` folder and add the backend URL:

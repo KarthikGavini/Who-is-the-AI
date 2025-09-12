@@ -4,126 +4,11 @@ import axios from 'axios';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 
-// A reusable Modal component
-const Modal = ({ isOpen, onClose, title, children }) => {
-    if (!isOpen) return null;
-
-    return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <div className="fixed inset-0 bg-black bg-opacity-80 backdrop-blur-sm" onClick={onClose}></div>
-            <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.2 }}
-                className="relative bg-gray-900/90 rounded-xl shadow-2xl w-full max-w-md text-left border border-gray-700"
-            >
-                <div className="p-8">
-                    <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-2xl font-bold text-white">{title}</h3>
-                        <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
-                        </button>
-                    </div>
-                    {children}
-                </div>
-            </motion.div>
-        </div>
-    );
-};
-
-// Custom AI cursor that follows the mouse
-const AiFollower = () => {
-    const followerRef = useRef(null);
-    useEffect(() => {
-        const handleMouseMove = (e) => {
-            if (followerRef.current) {
-                followerRef.current.style.transform = `translate3d(${e.clientX}px, ${e.clientY}px, 0)`;
-            }
-        };
-        window.addEventListener('mousemove', handleMouseMove);
-        return () => window.removeEventListener('mousemove', handleMouseMove);
-    }, []);
-
-    return (
-        <div ref={followerRef} className="fixed top-0 left-0 -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-blue-500/50 backdrop-blur-sm border-2 border-blue-400 shadow-lg shadow-blue-500/50 transition-transform duration-300 ease-out pointer-events-none z-[999] hidden md:block">
-            <div className="w-full h-full flex items-center justify-center">
-                <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-            </div>
-        </div>
-    );
-};
-
-// Smaller, interactive AI Mascot
-const AiMascot = () => {
-    const [pos, setPos] = useState({ top: '70%', left: '12%' });
-    const [visibleTip, setVisibleTip] = useState('');
-
-    useEffect(() => {
-        let mounted = true;
-
-        const behaviors = [
-            () => { if (!mounted) return; setPos({ top: '30%', left: '70%' }); },
-            () => { if (!mounted) return; setPos({ top: '20%', left: '20%' }); },
-            () => { if (!mounted) return; setPos({ top: '85%', left: '80%' }); },
-            () => { if (!mounted) return; setPos({ top: '55%', left: '50%' }); },
-        ];
-        const interval = setInterval(() => {
-            behaviors[Math.floor(Math.random() * behaviors.length)]();
-        }, 6000);
-
-        return () => { mounted = false; clearInterval(interval); };
-    }, []);
-
-    return (
-        <>
-            <motion.div
-                onMouseEnter={() => setVisibleTip('Oooh! That tickles 😵')}
-                onMouseLeave={() => setVisibleTip('')}
-                animate={{ top: pos.top, left: pos.left, rotate: [0, 6, -6, 0] }}
-                transition={{ duration: 1.6, ease: 'easeInOut' }}
-                className="fixed w-12 h-12 z-40 flex items-center justify-center"
-            >
-                <motion.div
-                    initial={{ scale: 0.95 }}
-                    animate={{ scale: [1, 1.06, 0.98, 1] }}
-                    transition={{ repeat: Infinity, duration: 4 }}
-                    className="relative w-12 h-12 rounded-lg bg-gradient-to-br from-pink-500 via-purple-500 to-indigo-600 shadow-[0_12px_40px_rgba(99,102,241,0.28)] border-2 border-white/25 flex items-center justify-center"
-                >
-                    <div className="absolute -top-3 w-8 h-8 rounded-full bg-white/95 flex items-center justify-center border border-gray-200 shadow-sm">
-                        <div className="w-8 h-4 flex items-center justify-evenly">
-                            <div className="w-2 h-2 bg-black rounded-full" />
-                            <div className="w-2 h-2 bg-black rounded-full" />
-                        </div>
-                    </div>
-                    <div className="absolute bottom-1 w-8 text-center text-white/95 text-xs font-semibold">\_(ツ)_/</div>
-                </motion.div>
-
-                {visibleTip && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0 }}
-                        className="absolute -bottom-10 whitespace-nowrap px-3 py-2 rounded-md bg-black/80 border border-white/10 text-white text-sm shadow-lg"
-                    >
-                        {visibleTip}
-                    </motion.div>
-                )}
-            </motion.div>
-        </>
-    );
-};
-
-
-const InfoCard = ({ icon, title, children }) => (
-    <div className="bg-gray-800/50 p-6 rounded-lg border border-gray-700 backdrop-blur-sm h-full">
-        <div className="flex items-center mb-3">
-            {icon}
-            <h4 className="font-bold text-lg text-white ml-3">{title}</h4>
-        </div>
-        <p className="text-gray-400">{children}</p>
-    </div>
-);
+// Import our newly created components
+import Modal from '../components/ui/Modal';
+import InfoCard from '../components/ui/InfoCard';
+import AiFollower from '../components/home/AiFollower';
+import AiMascot from '../components/home/AiMascot';
 
 
 function HomePage() {
@@ -285,8 +170,6 @@ function HomePage() {
                         Our AI learns from every match played by the community. Face an ever-evolving challenge.
                     </p>
                 </div>
-
-
 
                 <div className="max-w-6xl mx-auto">
                     <div className="p-8 rounded-2xl border border-blue-500/30 bg-blue-900/10 mb-16">

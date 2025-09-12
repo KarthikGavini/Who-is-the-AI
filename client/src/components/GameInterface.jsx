@@ -2,17 +2,16 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { socket } from '../socket';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// Import our new, smaller components
+import PlayerSidebar from './game/PlayerSidebar';
+import GameHeader from './game/GameHeader';
+import MessageList from './game/MessageList';
+import MessageInput from './game/MessageInput';
+
 // Color Palette for Players
 const playerColors = [
     'text-red-400', 'text-cyan-400', 'text-green-400', 'text-yellow-400', 'text-pink-400', 'text-indigo-400'
 ];
-
-// Helper to format time
-const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-};
 
 function GameInterface({ gameData, roomId }) {
     const [messageText, setMessageText] = useState('');
@@ -80,100 +79,28 @@ function GameInterface({ gameData, roomId }) {
 
     return (
         <div className="flex h-screen bg-gradient-to-b from-[#05040a] to-[#0c1636] text-gray-200 font-sans">
-
-            <aside className="hidden lg:flex flex-col w-72 bg-gray-900/50 p-4 border-r border-gray-700">
-                <h2 className="text-xl font-bold mb-4 text-white">Players</h2>
-                <div className="space-y-3">
-                    {Array.from(anonymousPlayersMap.entries()).map(([id, name]) => {
-                        const colorClass = playerColorMap.get(id) || 'text-gray-400';
-                        return (
-                            <div key={id} className={`p-3 rounded-lg flex items-center transition-colors ${id === socket.id ? 'bg-blue-500/20' : 'bg-gray-800/60'}`}>
-                                <span className={`w-3 h-3 rounded-full mr-3 ${id === socket.id ? 'bg-blue-400' : 'bg-gray-500'}`}></span>
-                                <span className={`font-medium ${colorClass}`}>{name}</span>
-                            </div>
-                        );
-                    })}
-                </div>
-                <div className="mt-auto text-center p-3 bg-gray-800 rounded-lg border border-gray-700">
-                    <p className="font-bold text-lg text-white">You are: {myAnonymousName}</p>
-                    {isAI && <p className="text-red-400 font-semibold">(You are the AI)</p>}
-                </div>
-            </aside>
-
-            <main className="flex-1 flex flex-col min-w-0"> {/* Added min-w-0 to prevent content overflow */}
-                {/* CORRECTED HEADER */}
-                <header className="bg-gray-900/50 p-4 border-b border-gray-700 backdrop-blur-sm flex justify-center">
-                    <div className="grid grid-cols-3 items-center w-full max-w-3xl text-center gap-4">
-                        {/* Left */}
-                        <div>
-                            <p className="text-sm text-gray-400">Theme</p>
-                            <h1 className="text-lg md:text-xl font-bold text-white">
-                                {gameData.currentTheme}
-                            </h1>
-                        </div>
-
-                        {/* Center */}
-                        <div className="p-3 rounded-lg bg-red-500/20 border border-red-500/50">
-                            <p className="text-sm text-red-300">Time Remaining</p>
-                            <p className="text-xl md:text-2xl font-black text-white tracking-wider">
-                                {formatTime(timeRemaining)}
-                            </p>
-                        </div>
-
-                        {/* Right */}
-                        <div>
-                            <p className="text-sm text-gray-400">Question</p>
-                            <h2 className="text-base md:text-lg text-gray-300 italic">
-                                "{gameData.currentQuestion}"
-                            </h2>
-                        </div>
-                    </div>
-                </header>
-
-                <div className="flex-1 overflow-y-auto p-2 sm:p-4 md:p-6">
-                    <div className="max-w-3xl mx-auto">
-                        <ul className="space-y-4">
-                            <AnimatePresence>
-                                {messages.map((msg, index) => {
-                                    const isMyMessage = msg.socketId === socket.id;
-                                    const colorClass = playerColorMap.get(msg.socketId) || 'text-gray-200';
-                                    return (
-                                        <motion.li
-                                            key={index}
-                                            initial={{ opacity: 0, y: 10 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            className={`flex flex-col ${isMyMessage ? 'items-end' : 'items-start'}`}
-                                        >
-                                            <div className={`py-2 px-4 rounded-2xl max-w-lg ${isMyMessage ? 'bg-blue-600 text-white rounded-br-none' : 'bg-gray-700 text-gray-200 rounded-bl-none'}`}>
-                                                <span className={`font-bold block text-sm ${isMyMessage ? 'text-blue-200' : colorClass}`}>{msg.nickname}</span>
-                                                <p className="text-base break-words">{msg.text}</p>
-                                            </div>
-                                        </motion.li>
-                                    );
-                                })}
-                            </AnimatePresence>
-                            <div ref={chatEndRef} />
-                        </ul>
-                    </div>
-                </div>
-
-                <footer className="p-2 sm:p-4 bg-gray-900/50 border-t border-gray-700">
-                    <div className="max-w-3xl mx-auto">
-                        <form onSubmit={handleSendMessage} className="flex space-x-2 sm:space-x-3">
-                            <input
-                                type="text"
-                                value={messageText}
-                                onChange={(e) => setMessageText(e.target.value)}
-                                placeholder="Type your message..."
-                                className="flex-grow p-3 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
-                                autoFocus
-                            />
-                            <button type="submit" className="px-4 sm:px-6 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-600" disabled={!messageText.trim()}>
-                                Send
-                            </button>
-                        </form>
-                    </div>
-                </footer>
+            <PlayerSidebar
+                anonymousPlayersMap={anonymousPlayersMap}
+                playerColorMap={playerColorMap}
+                myAnonymousName={myAnonymousName}
+                isAI={isAI}
+            />
+            <main className="flex-1 flex flex-col min-w-0">
+                <GameHeader
+                    theme={gameData.currentTheme}
+                    question={gameData.currentQuestion}
+                    timeRemaining={timeRemaining}
+                />
+                <MessageList
+                    messages={messages}
+                    playerColorMap={playerColorMap}
+                    chatEndRef={chatEndRef}
+                />
+                <MessageInput
+                    messageText={messageText}
+                    onTextChange={(e) => setMessageText(e.target.value)}
+                    onSendMessage={handleSendMessage}
+                />
             </main>
         </div>
     );
