@@ -136,13 +136,23 @@ const connectDB = async () => {
 connectDB();
 
 // --- MIDDLEWARE & ROUTES ---
-app.use(cors());
+const corsOptions = {
+    origin: 'https://who-is-the-ai-tj8g.onrender.com' // <-- Replace with your Vercel URL
+};
+app.use(cors(corsOptions));
+
 app.use(express.json());
 app.use('/api/rooms', roomRoutes);
 
 // --- SERVER & SOCKET.IO SETUP ---
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "*", methods: ["GET", "POST"] } });
+// const io = new Server(server, { cors: { origin: "*", methods: ["GET", "POST"] } });
+const io = new Server(server, {
+    cors: {
+        origin: "https://who-is-the-ai-tj8g.onrender.com", // <-- Replace with your Vercel URL
+        methods: ["GET", "POST"]
+    }
+});
 
 // --- REGISTER ALL SOCKET EVENT HANDLERS ---
 registerSocketHandlers(io, chloe_model);
