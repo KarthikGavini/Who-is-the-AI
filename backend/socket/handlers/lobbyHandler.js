@@ -71,12 +71,12 @@ export const registerLobbyHandlers = (io, socket) => {
             }
 
             // 2. Data Validation: Update settings if they are valid.
-            if (maxPlayers && (maxPlayers >= 3 && maxPlayers <= 5)) {
+            if (maxPlayers && (maxPlayers >= 2 && maxPlayers <= 5)) {
                 room.maxPlayers = maxPlayers;
             }
 
             // A list of allowed durations in seconds
-            const allowedDurations = [10, 60, 120, 180, 240, 300];
+            const allowedDurations = [180, 300, 420, 600];
             if (gameDuration && allowedDurations.includes(gameDuration)) {
                 room.gameDuration = gameDuration;
             }

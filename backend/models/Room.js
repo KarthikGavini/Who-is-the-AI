@@ -10,7 +10,6 @@ const playerSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
-    // playerId: { type: String, required: true },
     ready: {
         type: Boolean,
         default: false,
@@ -23,7 +22,6 @@ const messageSchema = new mongoose.Schema({
     socketId: { type: String, required: true },
 }, { _id: false, timestamps: true });
 
-// --- NEW VOTE SCHEMA ---
 const voteSchema = new mongoose.Schema({
     voterSocketId: {
         type: String,
@@ -51,14 +49,11 @@ const roomSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
-    // --- NEW FIELD ADDED HERE ---
     isPublic: {
         type: Boolean,
-        default: false, // By default, rooms are private
+        default: false, 
     },
-    // --- END OF NEW FIELD ---
 
-    // --- NEW FIELDS START HERE ---
     currentTheme: {
         type: String,
         default: '',
@@ -69,29 +64,24 @@ const roomSchema = new mongoose.Schema({
     },
     aiPlayerSocketId: {
         type: String,
-        default: null, // We'll set this when the game starts
+        default: null, 
     },
     messages: [messageSchema],
 
-    // gameDuration: {
-    //     type: Number,
-    //     default: 20, // Default to 120 seconds (2 minutes)
-    // },
     votes: [voteSchema],
     results: {
         type: Object,
         default: null,
     },
-    maxPlayers: { type: Number, default: 5, min: 3, max: 5 },
-    gameDuration: { type: Number, default: 5 }, // Default to 180 seconds (3 minutes)
+    maxPlayers: { type: Number, default: 5, min: 2, max: 5 },
+    gameDuration: { type: Number, default: 300 }, 
     anonymousPlayers: {
         type: Map,
-        of: String, // e.g., { "Mhi9Pd...": "Player 1", "AI_PLAYER_ID": "Player 2" }
+        of: String,
         default: {}
     },
-
     gameStartTime: { type: Date },
-    // --- NEW FIELDS END HERE ---
+
 }, { timestamps: true });
 
 const Room = mongoose.model('Room', roomSchema);

@@ -103,9 +103,24 @@ You are not just a respondent; you are a participant. If the conversation dies d
 - **Your goal is to generate discussion** so you can gather more information and identify suspicious behavior in others.
 `;
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+// console.log(process.env.GEMINI_API_KEY);
+// const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-export const chloe_model = genAI.getGenerativeModel({
-  model: "gemini-1.5-flash-latest",
-  systemInstruction: SYSTEM_PROMPT,
-});
+// export const chloe_model = genAI.getGenerativeModel({
+//   model: "gemini-1.5-flash-latest",
+//   systemInstruction: SYSTEM_PROMPT,
+// });
+
+const initializeAiModel = () => {
+    // This code will now run AFTER dotenv has been configured.
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    
+    const chloe_model = genAI.getGenerativeModel({
+      model: "gemini-2.5-flash",
+      systemInstruction: SYSTEM_PROMPT,
+    });
+
+    return chloe_model;
+};
+
+export default initializeAiModel;

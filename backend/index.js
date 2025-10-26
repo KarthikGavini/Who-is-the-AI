@@ -6,12 +6,15 @@ import { Server } from 'socket.io';
 
 // Import our refactored modules
 import connectDB from './config/db.js';
-import { chloe_model } from './config/gemini.js';
+// import { chloe_model } from './config/gemini.js';
+import initializeAiModel from './config/gemini.js'; 
 import roomRoutes from './routes/roomRoutes.js';
 import registerSocketHandlers from './socket/socketHandler.js'; 
+console.log(process.env.GEMINI_API_KEY);
 
 dotenv.config();
-
+const chloe_model = initializeAiModel();
+console.log(process.env.GEMINI_API_KEY);
 // Connect to Database
 connectDB();
 
@@ -43,7 +46,7 @@ app.use('/api/rooms', roomRoutes);
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: "https://your-live-vercel-url.app", // Make sure this is your correct URL
+        origin: allowedOrigins, // Make sure this is your correct URL
         methods: ["GET", "POST"]
     }
 });

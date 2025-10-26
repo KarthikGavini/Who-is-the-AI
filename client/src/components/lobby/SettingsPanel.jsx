@@ -29,6 +29,7 @@ const SettingsPanel = ({ isHost, room, handleSettingsChange, formatDuration, han
         <div>
           <label htmlFor="maxPlayers" className="block text-sm font-medium text-gray-300 mb-2">Max Players</label>
           <select id="maxPlayers" name="maxPlayers" value={room.maxPlayers} onChange={handleSettingsChange} className="w-full p-3 bg-gray-900/70 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+            <option value="2">2</option>
             <option value="3">3</option>
             <option value="4">4</option>
             <option value="5">5</option>
@@ -37,12 +38,12 @@ const SettingsPanel = ({ isHost, room, handleSettingsChange, formatDuration, han
         <div>
           <label htmlFor="gameDuration" className="block text-sm font-medium text-gray-300 mb-2">Game Duration</label>
           <select id="gameDuration" name="gameDuration" value={room.gameDuration} onChange={handleSettingsChange} className="w-full p-3 bg-gray-900/70 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
-            <option value="10">10 sec</option>
-            <option value="60">1 min</option>
-            <option value="120">2 min</option>
+            {/* <option value="10">10 sec</option>
+            <option value="60">1 min</option> */}
             <option value="180">3 min</option>
-            <option value="240">4 min</option>
             <option value="300">5 min</option>
+            <option value="420">7 min</option>
+            <option value="600">10 min</option>
           </select>
         </div>
       </div>
